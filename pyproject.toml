@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "testy-gitlab-plugin"
-version = "1.0.0"
+version = "1.0.1"
 description = "Run Python autotests from TestY via GitLab CI/CD."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -32,8 +32,8 @@ classifiers = [
 dev = ["django>=4.2"]
 
 [project.urls]
-Homepage = "https://github.com/TheGreatPepix/testy-gitlab-plugin"
-Repository = "https://github.com/TheGreatPepix/testy-gitlab-plugin"
+Homepage = "https://github.com/TheGreatPepix/testy_gitlab_plugin"
+Repository = "https://github.com/TheGreatPepix/testy_gitlab_plugin"
 
 [project.entry-points.testy]
 testy-gitlab-plugin = "testy_gitlab_runner"

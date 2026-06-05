@@ -194,6 +194,7 @@ class RunView(View):
         run = trigger_run(
             connection, plan, resolved=resolved,
             user=getattr(request.user, "username", ""),
+            base_url=request.build_absolute_uri("/"),
         )
         if run.status == PipelineRun.STATUS_ERROR:
             messages.error(request, f"Failed to trigger pipeline: {run.detail}")
@@ -250,6 +251,7 @@ class RunTestsAPIView(APIView):
             plan,
             resolved=resolved,
             user=getattr(request.user, "username", ""),
+            base_url=request.build_absolute_uri("/"),
         )
         if run.status == PipelineRun.STATUS_ERROR:
             return Response(

@@ -10,9 +10,9 @@ from testy_gitlab_runner.services.targets import ResolvedTargets
 
 
 def build_pipeline_variables(
-    connection: GitlabConnection, plan, resolved: ResolvedTargets,
+    connection: GitlabConnection, plan, resolved: ResolvedTargets, base_url: str = "",
 ) -> dict[str, str]:
-    testy_base = getattr(settings, "TESTY_PUBLIC_URL", "").rstrip("/")
+    testy_base = (getattr(settings, "TESTY_PUBLIC_URL", "") or base_url).rstrip("/")
     variables = {
         "TESTY_ENABLED": "1",
         "TESTY_URL": testy_base,
@@ -27,7 +27,7 @@ def build_pipeline_variables(
 
 
 def trigger_run(
-    connection: GitlabConnection, plan, *, resolved: ResolvedTargets, user="",
+    connection: GitlabConnection, plan, *, resolved: ResolvedTargets, user="", base_url="",
 ) -> PipelineRun:
     run = PipelineRun.objects.create(
         connection=connection,
@@ -43,7 +43,7 @@ def trigger_run(
         pipeline = client.trigger_pipeline(
             trigger_token=connection.trigger_token,
             ref=connection.ref,
-            variables=build_pipeline_variables(connection, plan, resolved),
+            variables=build_pipeline_variables(connection, plan, resolved, base_url),
         )
     except GitlabError as exc:
         run.status = PipelineRun.STATUS_ERROR
