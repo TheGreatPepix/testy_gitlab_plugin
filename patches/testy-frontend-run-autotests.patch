@@ -1,0 +1,286 @@
+diff --git a/frontend/src/entities/plugin/api/index.ts b/frontend/src/entities/plugin/api/index.ts
+index 09c294b..d12bdc8 100644
+--- a/frontend/src/entities/plugin/api/index.ts
++++ b/frontend/src/entities/plugin/api/index.ts
+@@ -2,6 +2,24 @@ import { createApi } from "@reduxjs/toolkit/dist/query/react"
+ 
+ import { rootQuery } from "app/apiSlice"
+ 
++export interface GitlabRunRequest {
++  plan: number
++  tests?: number[]
++  plans?: number[]
++}
++
++export interface GitlabRunResponse {
++  id: number
++  status: string
++}
++
++export interface PlanRunStatus {
++  can_run: boolean
++  enabled: boolean
++  total: number
++  missing: number
++}
++
+ export const pluginApi = createApi({
+   reducerPath: "pluginApi",
+   baseQuery: rootQuery,
+@@ -11,7 +29,18 @@ export const pluginApi = createApi({
+       query: () => "plugins/",
+       providesTags: [{ type: "Plugins", id: "LIST" }],
+     }),
++    runGitlabTests: builder.mutation<GitlabRunResponse, GitlabRunRequest>({
++      query: (body) => ({
++        url: "plugins/gitlab-runner/api/run/",
++        method: "POST",
++        body,
++      }),
++    }),
++    getPlanRunStatus: builder.query<PlanRunStatus, number>({
++      query: (planId) => `plugins/gitlab-runner/api/plan/${planId}/run-status/`,
++    }),
+   }),
+ })
+ 
+-export const { useGetPluginsQuery } = pluginApi
++export const { useGetPluginsQuery, useRunGitlabTestsMutation, useGetPlanRunStatusQuery } =
++  pluginApi
+diff --git a/frontend/src/features/test-plan/index.ts b/frontend/src/features/test-plan/index.ts
+index e87e654..6d26b1f 100644
+--- a/frontend/src/features/test-plan/index.ts
++++ b/frontend/src/features/test-plan/index.ts
+@@ -2,4 +2,5 @@ export { ArchiveTestPlan } from "./archive-test-plan/archive-test-plan"
+ export { DeleteTestPlan } from "./delete-test-plan/delete-test-plan"
+ export { CopyTestPlan } from "./copy-test-plan/copy-test-plan"
+ export { ExportTestPlan } from "./export-test-plan/export-test-plan"
++export { RunAutotests } from "./run-autotests/run-autotests"
+ export * from "./change-test-plan"
+diff --git a/frontend/src/features/test-plan/run-autotests/run-autotests.tsx b/frontend/src/features/test-plan/run-autotests/run-autotests.tsx
+new file mode 100644
+index 0000000..c0aecd8
+--- /dev/null
++++ b/frontend/src/features/test-plan/run-autotests/run-autotests.tsx
+@@ -0,0 +1,56 @@
++import { memo } from "react"
++import { useTranslation } from "react-i18next"
++
++import { useGetPlanRunStatusQuery, useRunGitlabTestsMutation } from "entities/plugin/api"
++
++import PlayIcon from "shared/assets/yi-icons/play.svg?react"
++import { useAntdModals } from "shared/hooks"
++import { Button } from "shared/ui"
++
++interface Props {
++  testPlan: TestPlan
++}
++
++export const RunAutotests = memo(({ testPlan }: Props) => {
++  const { t } = useTranslation()
++  const { antdNotification } = useAntdModals()
++  const [runGitlabTests, { isLoading }] = useRunGitlabTestsMutation()
++  const { data: runStatus } = useGetPlanRunStatusQuery(testPlan.id)
++
++  const handleRun = async () => {
++    try {
++      await runGitlabTests({ plan: testPlan.id, plans: [testPlan.id] }).unwrap()
++      antdNotification.success("run-tests", {
++        description: t("Pipeline triggered"),
++      })
++    } catch (error) {
++      const apiError = error as {
++        data?: { detail?: string; missing?: Record<string, number[]> }
++        message?: string
++      }
++      const missing = apiError.data?.missing ? ` ${JSON.stringify(apiError.data.missing)}` : ""
++      const detail = apiError.data?.detail || apiError.message || t("Failed to run tests")
++      antdNotification.error("run-tests", {
++        description: `${detail}${missing}`,
++      })
++    }
++  }
++
++  if (!runStatus?.can_run) {
++    return null
++  }
++
++  return (
++    <Button
++      id="run-autotests-test-plan"
++      icon={<PlayIcon width={16} height={16} />}
++      onClick={handleRun}
++      color="secondary-linear"
++      disabled={isLoading}
++    >
++      {t("Run Autotests")}
++    </Button>
++  )
++})
++
++RunAutotests.displayName = "RunAutotests"
+diff --git a/frontend/src/shared/assets/yi-icons/play.svg b/frontend/src/shared/assets/yi-icons/play.svg
+new file mode 100644
+index 0000000..747f9db
+--- /dev/null
++++ b/frontend/src/shared/assets/yi-icons/play.svg
+@@ -0,0 +1,9 @@
++<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
++  <path
++    d="M5.25 3.75L11.25 8L5.25 12.25V3.75Z"
++    stroke="currentColor"
++    stroke-width="1.5"
++    stroke-linejoin="round"
++    stroke-linecap="round"
++  />
++</svg>
+\ No newline at end of file
+diff --git a/frontend/src/shared/locales/ru.json b/frontend/src/shared/locales/ru.json
+index e53755f..6823ecc 100644
+--- a/frontend/src/shared/locales/ru.json
++++ b/frontend/src/shared/locales/ru.json
+@@ -368,0 +369,3 @@
++  "Run Autotests": "Запустить автотесты",
++  "Pipeline triggered": "Пайплайн запущен",
++  "Failed to run tests": "Не удалось запустить тесты",
+diff --git a/frontend/src/shared/locales/ru/ru.json b/frontend/src/shared/locales/ru/ru.json
+index b9bba3a..1008428 100644
+--- a/frontend/src/shared/locales/ru/ru.json
++++ b/frontend/src/shared/locales/ru/ru.json
+@@ -483,0 +484,3 @@
++  "Run Autotests": "Запустить автотесты",
++  "Pipeline triggered": "Пайплайн запущен",
++  "Failed to run tests": "Не удалось запустить тесты",
+diff --git a/frontend/src/widgets/test-plan/test-plan-header/test-plan-header.tsx b/frontend/src/widgets/test-plan/test-plan-header/test-plan-header.tsx
+index 0786bad..d305d1a 100644
+--- a/frontend/src/widgets/test-plan/test-plan-header/test-plan-header.tsx
++++ b/frontend/src/widgets/test-plan/test-plan-header/test-plan-header.tsx
+@@ -11,6 +11,7 @@ import {
+   CopyTestPlan,
+   DeleteTestPlan,
+   ExportTestPlan,
++  RunAutotests,
+ } from "features/test-plan"
+ 
+ import { useTestPlanContext } from "pages/project"
+@@ -109,6 +110,7 @@ export const TestPlanHeader = () => {
+         {!testPlan.is_archive && (
+           <ArchiveTestPlan testPlan={testPlan} onSubmit={refetchParentAfterArchive} />
+         )}
++        <RunAutotests testPlan={testPlan} />
+         <DeleteTestPlan testPlan={testPlan} onSubmit={refetchParentAfterDelete} />
+         <ExportTestPlan testPlan={testPlan} />
+         <IntegrationsDropdown testPlanId={testPlan.id} className={styles.integrationsDropdown} />
+diff --git a/frontend/src/widgets/tests/tests-bulk-action/tests-bulk-action.tsx b/frontend/src/widgets/tests/tests-bulk-action/tests-bulk-action.tsx
+index c916b9b..59a2543 100644
+--- a/frontend/src/widgets/tests/tests-bulk-action/tests-bulk-action.tsx
++++ b/frontend/src/widgets/tests/tests-bulk-action/tests-bulk-action.tsx
+@@ -4,6 +4,8 @@ import { useTranslation } from "react-i18next"
+ 
+ import { useAppSelector } from "app/hooks"
+ 
++import { useRunGitlabTestsMutation } from "entities/plugin/api"
++import type { GitlabRunRequest } from "entities/plugin/api"
+ import { useBulkTreeUpdateMutation, useBulkUpdateMutation } from "entities/test/api"
+ import { selectFilter, selectSettings, useTestDataView } from "entities/test/model"
+ 
+@@ -17,6 +19,7 @@ import { AddBulkResult } from "features/test-result/bulk-add-result/add-bulk-res
+ import { useProjectContext } from "pages/project"
+ 
+ import ArrowIcon from "shared/assets/yi-icons/arrow.svg?react"
++import PlayIcon from "shared/assets/yi-icons/play.svg?react"
+ import { NOT_ASSIGNED_FILTER_VALUE } from "shared/constants"
+ import { useAntdModals } from "shared/hooks"
+ import { deleteEmptyParams } from "shared/libs"
+@@ -99,6 +102,7 @@ export const TestsBulkAction = ({ testPlanId, resetSelectedRows }: Props) => {
+   const [bulkUpdateTableTests, { isLoading: isLoadingBulkTable }] = useBulkUpdateMutation()
+   const [bulkUpdateTreeTests, { isLoading: isLoadingBulkTree }] = useBulkTreeUpdateMutation()
+   const bulkUpdate = dataView === "list" ? bulkUpdateTableTests : bulkUpdateTreeTests
++  const [runGitlabTests, { isLoading: isRunningGitlabTests }] = useRunGitlabTestsMutation()
+ 
+   const [getPlans] = useLazyGetTestPlansQuery()
+   const [getAncestors] = useLazyGetTestPlanAncestorsQuery()
+@@ -162,6 +166,28 @@ export const TestsBulkAction = ({ testPlanId, resetSelectedRows }: Props) => {
+     return reqData
+   }
+ 
++  const prepareRunTestsData = (): GitlabRunRequest => {
++    if (!testPlanId) {
++      throw new Error("Test plan is required.")
++    }
++    if (dataView === "list") {
++      if (tableSettings.isAllSelected) {
++        throw new Error(
++          "Running tests after selecting all rows by filter is not supported yet."
++        )
++      }
++      return {
++        plan: Number(testPlanId),
++        tests: tableSettings.selectedRows,
++      }
++    }
++    return {
++      plan: Number(testPlanId),
++      tests: treeSettings.selectedLeafRows,
++      plans: treeSettings.selectedRows,
++    }
++  }
++
+   const reinitTree = () => {
+     if (testsTree.current) {
+       testsTree.current.initRoot()
+@@ -250,7 +276,47 @@ export const TestsBulkAction = ({ testPlanId, resetSelectedRows }: Props) => {
+     reinitTree()
+   }
+ 
++  const handleRunGitlabTests = async () => {
++    try {
++      await runGitlabTests(prepareRunTestsData()).unwrap()
++
++      antdNotification.success("run-tests", {
++        description: t("Pipeline triggered"),
++      })
++
++      reinitTree()
++    } catch (error) {
++      const apiError = error as {
++        data?: { detail?: string; missing?: Record<string, number[]> }
++        message?: string
++      }
++      const missing = apiError.data?.missing
++        ? ` ${JSON.stringify(apiError.data.missing)}`
++        : ""
++      const detail =
++        apiError.data?.detail || apiError.message || t("Failed to run tests")
++      antdNotification.error("run-tests", {
++        description: `${detail}${missing}`,
++      })
++    }
++  }
++
+   const actionItems: MenuProps["items"] = [
++    ...(testPlanId
++      ? [
++          {
++            key: "runTests",
++            label: (
++              <Flex align="center" id="run-autotests-bulk-menu-item">
++                <PlayIcon width={16} height={16} style={{ marginRight: 8 }} />
++                {t("Run Autotests")}
++              </Flex>
++            ),
++            disabled: isRunningGitlabTests,
++            onClick: handleRunGitlabTests,
++          },
++        ]
++      : []),
+     {
+       key: "move",
+       label: (
+@@ -317,4 +383,4 @@ export const TestsBulkAction = ({ testPlanId, resetSelectedRows }: Props) => {
+       </div>
+     </Flex>
+   )
+-}
++}
+\ No newline at end of file

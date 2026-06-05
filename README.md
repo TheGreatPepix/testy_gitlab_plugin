@@ -126,6 +126,17 @@
 | `POST` | `plugins/gitlab-runner/api/run/` | проверяет выбранные тесты и планы, запускает GitLab CI |
 | `GET` | `plugins/gitlab-runner/api/plan/<id>/run-status/` | показывает, можно ли запускать план |
 
+### Запуск из фронтенда TestY
+
+HTTP API можно вызывать напрямую, но для запуска автотестов из интерфейса TestY нужно добавить frontend-кнопки. Для этого примените патч из этого репозитория к рабочей копии TestY:
+
+```bash
+cd /path/to/testy
+git apply /path/to/testy_gitlab_runner/patches/testy-frontend-run-autotests.patch
+```
+
+Патч добавляет кнопку запуска в заголовок тест-плана и пункт запуска для выбранных тестов в bulk actions. Он рассчитан на frontend TestY из `https://gitlab-pub.yadro.com/testy/testy/`.
+
 ### `POST plugins/gitlab-runner/api/run/`
 
 Запускает автотесты для выбранных тестов или вложенных планов.
