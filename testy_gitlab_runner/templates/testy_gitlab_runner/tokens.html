@@ -1,0 +1,47 @@
+{% extends "testy_gitlab_runner/base.html" %}
+{% block title %}TestY · GitLab Runner — Tokens{% endblock %}
+{% block content %}
+<h1>GitLab Autotest Runner</h1>
+{% include "testy_gitlab_runner/_subnav.html" %}
+
+<div class="cards">
+  <section class="card">
+    <h3>Generate TTL token</h3>
+    <p class="hint">A TTL token tied to <strong>your</strong> account. Add it as a masked
+       <code>TESTY_TOKEN</code> CI/CD variable in the autotests repository (the plugin does not
+       store it). The full key is shown once, right after generation.</p>
+    <form method="post" action="{% url 'plugins:testy_gitlab_runner:generate-token' %}">
+      {% csrf_token %}
+      {% if project %}<input type="hidden" name="project" value="{{ project.id }}">{% endif %}
+      <div class="actions">
+        <button type="submit" class="accent">Generate TTL token</button>
+      </div>
+    </form>
+  </section>
+</div>
+
+<h2>Your tokens</h2>
+{% if tokens %}
+  <table>
+    <tr><th>Key</th><th>Description</th><th>Created</th><th>Expires</th><th></th></tr>
+    {% for tok in tokens %}
+      <tr>
+        <td><code>{{ tok.key|slice:":8" }}…</code></td>
+        <td>{{ tok.description|default:"—" }}</td>
+        <td>{{ tok.created|date:"Y-m-d" }}</td>
+        <td>{{ tok.expiration_date|date:"Y-m-d" }}</td>
+        <td>
+          <form class="inline" method="post"
+                action="{% url 'plugins:testy_gitlab_runner:revoke-token' tok.key %}">
+            {% csrf_token %}
+            {% if project %}<input type="hidden" name="project" value="{{ project.id }}">{% endif %}
+            <button type="submit">Revoke</button>
+          </form>
+        </td>
+      </tr>
+    {% endfor %}
+  </table>
+{% else %}
+  <p class="hint">No tokens yet.</p>
+{% endif %}
+{% endblock %}

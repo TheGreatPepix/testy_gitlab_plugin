@@ -1,0 +1,19 @@
+<form method="get" class="proj-picker">
+  <label for="proj-select">Project</label>
+  <select id="proj-select" name="project" onchange="this.form.submit()">
+    <option value="">— select —</option>
+    {% for p in projects %}
+      <option value="{{ p.id }}" {% if project and p.id == project.id %}selected{% endif %}>{{ p.name }}</option>
+    {% endfor %}
+  </select>
+</form>
+{% if project %}
+  <nav class="tabs">
+    <a href="{% url 'plugins:testy_gitlab_runner:index' %}?project={{ project.id }}"
+       class="{% if active == 'config' %}is-active{% endif %}">Config</a>
+    <a href="{% url 'plugins:testy_gitlab_runner:tokens' %}?project={{ project.id }}"
+       class="{% if active == 'tokens' %}is-active{% endif %}">Tokens</a>
+    <a href="{% url 'plugins:testy_gitlab_runner:runs' %}?project={{ project.id }}"
+       class="{% if active == 'runs' %}is-active{% endif %}">Runs</a>
+  </nav>
+{% endif %}

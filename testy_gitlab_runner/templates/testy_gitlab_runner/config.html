@@ -1,0 +1,91 @@
+{% extends "testy_gitlab_runner/base.html" %}
+{% block title %}TestY · GitLab Runner — Config{% endblock %}
+{% block content %}
+<h1>GitLab Autotest Runner</h1>
+{% include "testy_gitlab_runner/_subnav.html" %}
+
+{% if project %}
+<div class="cards">
+  <section class="card">
+    <h3>GitLab connection</h3>
+    <form method="post" action="{% url 'plugins:testy_gitlab_runner:config' project.id %}">
+      {% csrf_token %}
+      <div class="field">
+        <label>GitLab URL</label>
+        <input type="url" name="gitlab_url"
+               value="{{ connection.gitlab_url|default:'https://gitlab.com' }}" required>
+      </div>
+      <div class="field">
+        <label>GitLab project id</label>
+        <input type="number" name="gitlab_project_id"
+               value="{{ connection.gitlab_project_id|default:'' }}" required>
+      </div>
+      <div class="field">
+        <label>Ref (branch / tag)</label>
+        <input type="text" name="ref" value="{{ connection.ref|default:'main' }}">
+      </div>
+      <div class="field">
+        <label>Trigger token {% if connection %}(leave blank to keep current){% endif %}</label>
+        <input type="password" name="trigger_token" {% if not connection %}required{% endif %}>
+        <span class="hint">GitLab → Settings → CI/CD → Pipeline triggers.</span>
+      </div>
+      <div class="field-check">
+        <label><input type="checkbox" name="enabled"
+               {% if not connection or connection.enabled %}checked{% endif %}> Enabled</label>
+      </div>
+      <div class="actions">
+        <button type="submit" class="accent">Save connection</button>
+      </div>
+    </form>
+  </section>
+
+  <section class="card">
+    <h3>History cleanup</h3>
+    <p class="hint">Hard-delete old <strong>autotest</strong> history (matched by
+       <code>automation_id</code>) — manual tests are never touched. <code>0</code> disables a
+       window. Runs daily when enabled.</p>
+    <form method="post" action="{% url 'plugins:testy_gitlab_runner:retention-config' project.id %}">
+      {% csrf_token %}
+      <div class="field-check">
+        <label><input type="checkbox" name="enabled"
+               {% if retention.enabled %}checked{% endif %}> Enabled (daily)</label>
+      </div>
+      <div class="field">
+        <label>Delete results older than (days)</label>
+        <input type="number" name="results_days" min="0"
+               value="{% if retention %}{{ retention.results_days }}{% else %}90{% endif %}">
+      </div>
+      <div class="field">
+        <label>Delete version snapshots older than (days)</label>
+        <input type="number" name="versions_days" min="0"
+               value="{% if retention %}{{ retention.versions_days }}{% else %}90{% endif %}">
+      </div>
+      <div class="actions">
+        <button type="submit" class="accent">Save policy</button>
+      </div>
+    </form>
+    {% if retention %}
+      <div class="actions">
+        <form class="inline" method="post"
+              action="{% url 'plugins:testy_gitlab_runner:run-cleanup' project.id %}">
+          {% csrf_token %}
+          <input type="hidden" name="dry_run" value="1">
+          <button type="submit">Preview</button>
+        </form>
+        <form class="inline" method="post"
+              action="{% url 'plugins:testy_gitlab_runner:run-cleanup' project.id %}"
+              onsubmit="return confirm('Hard-delete old autotest history for this project? This cannot be undone.')">
+          {% csrf_token %}
+          <button type="submit">Run cleanup now</button>
+        </form>
+      </div>
+      {% if retention.last_run_at %}
+        <p><small>Last run: {{ retention.last_run_at }} — {{ retention.last_run_detail }}</small></p>
+      {% endif %}
+    {% endif %}
+  </section>
+</div>
+{% else %}
+  <p class="hint">Select a project to configure its GitLab connection and history cleanup.</p>
+{% endif %}
+{% endblock %}

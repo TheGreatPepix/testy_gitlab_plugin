@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}TestY · GitLab Autotest Runner{% endblock %}</title>
+  <script>
+    (function () {
+      var eff;
+      try {
+        var root = JSON.parse(localStorage.getItem("persist:root") || "{}");
+        var theme = JSON.parse(root.theme || "{}");
+        eff = theme.themeType === "system" ? theme.themeValue : theme.themeType;
+      } catch (e) {}
+      if (eff !== "dark" && eff !== "light") {
+        eff = (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches)
+          ? "dark" : "light";
+      }
+      document.documentElement.setAttribute("data-theme", eff);
+    })();
+  </script>
+  <style>
+    :root {
+      --y-grey-0:#fff; --y-grey-10:#f6f6f6; --y-grey-15:#eee; --y-grey-20:#dfdfdf;
+      --y-grey-25:#cdcdcd; --y-grey-30:#b8b8b8; --y-grey-35:#999; --y-grey-40:#777;
+      --y-grey-50:#555; --y-grey-60:#484848; --y-grey-70:#404040; --y-grey-75:#373737;
+      --y-grey-80:#2c2c2c; --y-grey-85:#262626; --y-grey-90:#1f1f1f;
+      --y-blue-50:#425cd7; --y-blue-30:#4e6bf3; --y-blue-20:#637eff; --y-blue-15:#7a9dff;
+      --y-green-50:#3bb073; --y-green-10:#eef7f2; --y-green-80:#2e4137;
+      --y-red-50:#c9454f; --y-red-10:#faeeef; --y-red-80:#462e30;
+      --y-yellow-50:#f5b40a; --y-yellow-30:#f4cc64; --y-yellow-10:#fef8e9; --y-yellow-80:#4e4325;
+
+      --bg: var(--y-grey-0); --bg-alt: var(--y-grey-10);
+      --text: var(--y-grey-70); --text-secondary: var(--y-grey-50);
+      --border: var(--y-grey-20); --divider: var(--y-grey-20);
+      --accent: var(--y-blue-50); --accent-hover: var(--y-blue-30); --on-accent: var(--y-grey-0);
+      --secondary: var(--y-grey-15); --secondary-hover: var(--y-grey-20); --on-secondary: var(--y-grey-70);
+      --link: var(--y-blue-50); --link-hover: var(--y-blue-30);
+      --control-bg: var(--y-grey-0); --control-border: var(--y-grey-25); --control-text: var(--y-grey-50);
+      --table-header: var(--y-grey-10);
+      --success-bg: var(--y-green-10); --success: var(--y-green-50);
+      --error-bg: var(--y-red-10); --error: var(--y-red-50);
+      --warning-bg: var(--y-yellow-10); --warning: #946b00;
+      --pending-bg: var(--y-grey-10); --pending: var(--y-grey-50);
+      --tooltip-bg: var(--y-grey-85); --tooltip-text: var(--y-grey-0);
+    }
+    html[data-theme="dark"] {
+      --bg: var(--y-grey-85); --bg-alt: var(--y-grey-90);
+      --text: var(--y-grey-20); --text-secondary: var(--y-grey-30);
+      --border: var(--y-grey-60); --divider: var(--y-grey-70);
+      --accent: var(--y-blue-30); --accent-hover: var(--y-blue-20); --on-accent: var(--y-grey-0);
+      --secondary: var(--y-grey-75); --secondary-hover: var(--y-grey-70); --on-secondary: var(--y-grey-15);
+      --link: var(--y-blue-20); --link-hover: var(--y-blue-15);
+      --control-bg: var(--y-grey-85); --control-border: var(--y-grey-40); --control-text: var(--y-grey-20);
+      --table-header: var(--y-grey-80);
+      --success-bg: var(--y-green-80); --success: var(--y-green-50);
+      --error-bg: var(--y-red-80); --error: var(--y-red-50);
+      --warning-bg: var(--y-yellow-80); --warning: var(--y-yellow-30);
+      --pending-bg: var(--y-grey-70); --pending: var(--y-grey-30);
+      --tooltip-bg: var(--y-grey-80); --tooltip-text: var(--y-grey-10);
+    }
+
+    * { box-sizing: border-box; font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+    html, body { margin: 0; padding: 0; }
+    body { background: var(--bg); color: var(--text); font-size: 14px; line-height: 1.5; }
+
+    .topbar {
+      display: flex; align-items: center; gap: 12px; padding: 10px 24px;
+      background: var(--bg-alt); border-bottom: 1px solid var(--divider);
+      position: sticky; top: 0; z-index: 10;
+    }
+    .brand {
+      position: relative; display: inline-flex; align-items: center; gap: 6px;
+      font-weight: 700; font-size: 1.05rem; letter-spacing: .2px;
+      color: var(--text); text-decoration: none; cursor: pointer;
+    }
+    .brand:hover { color: var(--link); text-decoration: none; }
+    .brand .arrow { font-size: 1.2em; line-height: 1; }
+    .brand[data-tip]:hover::after {
+      content: attr(data-tip); position: absolute; left: 0; top: calc(100% + 6px);
+      white-space: nowrap; padding: 4px 8px; border-radius: 2px;
+      background: var(--tooltip-bg); color: var(--tooltip-text);
+      font-size: 12px; font-weight: 400; box-shadow: 0 2px 8px rgba(0,0,0,.25); z-index: 20;
+    }
+
+    main { padding: 20px 24px 48px; max-width: 1280px; }
+
+    h1 { font-size: 1.55rem; margin: .2em 0 .6em; font-weight: 700; }
+    h2 { font-size: 1.1rem; margin-top: 1.8rem; font-weight: 600; }
+    a { color: var(--link); text-decoration: none; }
+    a:hover { color: var(--link-hover); text-decoration: underline; }
+
+    table { border-collapse: collapse; width: 100%; margin-top: .6rem; }
+    th, td { border: 1px solid var(--border); padding: .5rem .7rem; text-align: left; }
+    th { background: var(--table-header); font-weight: 600; }
+
+    button {
+      font-family: inherit; font-weight: 600; font-size: 12px; text-transform: uppercase;
+      padding: .45rem .85rem; border-radius: 2px; cursor: pointer; box-shadow: none;
+      background: var(--secondary); color: var(--on-secondary); border: 1px solid var(--secondary);
+    }
+    button:hover { background: var(--secondary-hover); }
+    button.accent { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+    button.accent:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
+
+    input, select {
+      font-family: inherit; font-size: 14px; padding: .4rem .55rem; border-radius: 2px;
+      background: var(--control-bg); color: var(--control-text); border: 1px solid var(--control-border);
+    }
+    input:focus, select:focus { outline: none; border-color: var(--accent); }
+    label { color: var(--text-secondary); }
+
+    code {
+      font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+      background: var(--bg-alt); border: 1px solid var(--border); border-radius: 2px;
+      padding: 1px 5px; font-size: .9em; color: var(--text);
+    }
+
+    .msg {
+      padding: .6rem .85rem; border-radius: 2px; margin: .35rem 0;
+      background: var(--bg-alt); border-left: 3px solid var(--text-secondary);
+    }
+    .msg.success { background: var(--success-bg); border-left-color: var(--success); }
+    .msg.error { background: var(--error-bg); border-left-color: var(--error); }
+
+    .badge { padding: .12rem .55rem; border-radius: 100px; font-size: .78rem; font-weight: 600; }
+    .badge.running, .badge.triggered { background: var(--warning-bg); color: var(--warning); }
+    .badge.success { background: var(--success-bg); color: var(--success); }
+    .badge.failed, .badge.error { background: var(--error-bg); color: var(--error); }
+    .badge.canceled { background: var(--pending-bg); color: var(--pending); }
+
+    form.inline { display: inline; }
+    small { color: var(--text-secondary); }
+
+    .proj-picker { display: flex; align-items: center; gap: 8px; margin: 0 0 6px; }
+    .proj-picker label { font-size: 12px; font-weight: 600; color: var(--text-secondary); }
+    .tabs { display: flex; gap: 2px; border-bottom: 1px solid var(--divider); margin: 10px 0 22px; }
+    .tabs a {
+      padding: 8px 16px; text-decoration: none; color: var(--text-secondary);
+      font-weight: 600; font-size: 13px; border-bottom: 2px solid transparent; margin-bottom: -1px;
+    }
+    .tabs a:hover { color: var(--text); text-decoration: none; }
+    .tabs a.is-active { color: var(--accent); border-bottom-color: var(--accent); }
+
+    .cards { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start; margin-top: 4px; }
+    .card {
+      background: var(--bg-alt); border: 1px solid var(--border); border-radius: 4px;
+      padding: 16px 18px; flex: 1 1 360px; min-width: 300px; max-width: 540px;
+    }
+    .card h3 { margin: 0 0 14px; font-size: 1rem; font-weight: 600; }
+    .field { display: flex; flex-direction: column; gap: 5px; margin-bottom: 14px; }
+    .field > label { font-size: 12px; font-weight: 600; color: var(--text-secondary); }
+    .field input, .field select { width: 100%; }
+    .field-check { margin-bottom: 14px; }
+    .field-check label {
+      color: var(--text); font-weight: 500; display: inline-flex; align-items: center; gap: 8px;
+    }
+    .hint { font-size: 12px; color: var(--text-secondary); line-height: 1.5; margin: 0 0 12px; }
+    .actions { display: flex; gap: 8px; align-items: center; margin-top: 6px; flex-wrap: wrap; }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/" data-tip="Вернуться в TestY">
+      <span class="arrow">‹</span><span>TestY</span>
+    </a>
+  </header>
+  <main>
+    {% for message in messages %}
+      <div class="msg {{ message.tags }}">{{ message }}</div>
+    {% endfor %}
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>
