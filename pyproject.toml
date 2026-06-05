@@ -2,9 +2,12 @@
 requires = ["setuptools>=61"]
 build-backend = "setuptools.build_meta"
 
+[tool.setuptools.dynamic]
+version = { attr = "testy_gitlab_runner.__version__" }
+
 [project]
 name = "testy-gitlab-plugin"
-version = "1.0.1"
+dynamic = ["version"]
 description = "Run Python autotests from TestY via GitLab CI/CD."
 readme = "README.md"
 requires-python = ">=3.10"

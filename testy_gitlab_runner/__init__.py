@@ -1,4 +1,4 @@
-__version__ = "0.1.0"
+__version__ = "1.0.2"
 default_app_config = "testy_gitlab_runner.apps.TestyGitlabRunnerConfig"
 
 try:
@@ -14,7 +14,7 @@ except ImportError:
 class TestyGitlabPluginConfig(TestyPluginConfig):
     package_name = "testy_gitlab_runner"
     verbose_name = "GitLab Autotest Runner"
-    description = "Trigger GitLab CI pipelines to run Python autotests for a test plan."
+    description = "Run Python autotests from TestY via GitLab CI/CD."
     version = __version__
     plugin_base_url = "gitlab-runner"
     author = "id.safronov"
