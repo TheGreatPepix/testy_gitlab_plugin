@@ -1,0 +1,58 @@
+{% extends "testy_gitlab_runner/base.html" %}
+{% block title %}TestY · GitLab Runner — Runs{% endblock %}
+{% block content %}
+<h1>GitLab Autotest Runner</h1>
+{% include "testy_gitlab_runner/_subnav.html" %}
+
+{% if project %}
+  {% if connection and connection.enabled %}
+    <div class="cards">
+      <section class="card">
+        <h3>Run a test plan</h3>
+        {% if plans %}
+          <p class="hint">Only plans whose every test has an <code>automation_id</code> are listed.</p>
+          <form method="post" action="{% url 'plugins:testy_gitlab_runner:run' %}">
+            {% csrf_token %}
+            <div class="field">
+              <label>Test plan</label>
+              <select name="plan_id" required>
+                {% for plan in plans %}
+                  <option value="{{ plan.id }}">{{ plan.name }} (#{{ plan.id }})</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="actions">
+              <button type="submit" class="accent">▶ Run autotests</button>
+            </div>
+          </form>
+        {% else %}
+          <p class="hint">No runnable plans for this project — a plan is listed only when it has
+             tests and <strong>every</strong> test carries an <code>automation_id</code> attribute.</p>
+        {% endif %}
+      </section>
+    </div>
+  {% else %}
+    <p class="hint">No enabled GitLab connection for this project.
+       Set it up in <a href="{% url 'plugins:testy_gitlab_runner:index' %}?project={{ project.id }}">Config</a>.</p>
+  {% endif %}
+
+  <h2>Recent runs</h2>
+  <table>
+    <tr><th>#</th><th>Plan</th><th>Pipeline</th><th>Status</th><th>When</th><th>By</th></tr>
+    {% for run in runs %}
+      <tr>
+        <td>{{ run.id }}</td>
+        <td>{{ run.plan_id }}</td>
+        <td>{% if run.web_url %}<a href="{{ run.web_url }}" target="_blank">{{ run.gitlab_pipeline_id }}</a>{% else %}—{% endif %}</td>
+        <td><span class="badge {{ run.status }}">{{ run.status }}</span></td>
+        <td>{{ run.created_at }}</td>
+        <td>{{ run.triggered_by }}</td>
+      </tr>
+    {% empty %}
+      <tr><td colspan="6">No runs yet.</td></tr>
+    {% endfor %}
+  </table>
+{% else %}
+  <p class="hint">Select a project to run test plans and see recent runs.</p>
+{% endif %}
+{% endblock %}

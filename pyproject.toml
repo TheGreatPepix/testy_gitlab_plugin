@@ -1,0 +1,45 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "testy-gitlab-plugin"
+version = "1.0.0"
+description = "Run Python autotests from TestY via GitLab CI/CD."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "Igor Safronov" }]
+keywords = ["testy", "tms", "gitlab", "ci", "pytest", "test-management", "autotests"]
+dependencies = [
+    "requests>=2.28",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Framework :: Django",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Testing",
+    "Topic :: Software Development :: Quality Assurance",
+]
+
+[project.optional-dependencies]
+dev = ["django>=4.2"]
+
+[project.urls]
+Homepage = "https://github.com/TheGreatPepix/testy-gitlab-plugin"
+Repository = "https://github.com/TheGreatPepix/testy-gitlab-plugin"
+
+[project.entry-points.testy]
+testy-gitlab-plugin = "testy_gitlab_runner"
+
+[tool.setuptools.packages.find]
+include = ["testy_gitlab_runner*"]
+
+[tool.setuptools.package-data]
+testy_gitlab_runner = ["templates/**/*.html"]
