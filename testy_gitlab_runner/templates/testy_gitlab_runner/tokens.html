@@ -4,6 +4,43 @@
 <h1>GitLab Autotest Runner</h1>
 {% include "testy_gitlab_runner/_subnav.html" %}
 
+<style>
+  .new-token { border-color: var(--accent); }
+  .token-copy { display: flex; gap: 8px; align-items: center; }
+  .token-copy input { flex: 1; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+  .token-copy button { flex: none; }
+</style>
+
+{% if new_token %}
+  <section class="card new-token">
+    <h3>Your new TTL token — copy it now, it is shown once</h3>
+    <p class="hint">Add it as a masked <code>TESTY_TOKEN</code> CI/CD variable in your autotests
+       repository.{% if new_token_expires %} Expires {{ new_token_expires }}.{% endif %}</p>
+    <div class="token-copy">
+      <input id="new-token-value" type="text" readonly value="{{ new_token }}"
+             onfocus="this.select();">
+      <button type="button" class="accent" onclick="copyToken(this)">Copy</button>
+    </div>
+  </section>
+  <script>
+    function copyToken(btn) {
+      var input = document.getElementById('new-token-value');
+      var done = function () {
+        var prev = btn.textContent;
+        btn.textContent = 'Copied!';
+        setTimeout(function () { btn.textContent = prev; }, 1500);
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(input.value).then(done, function () {
+          input.select(); document.execCommand('copy'); done();
+        });
+      } else {
+        input.select(); document.execCommand('copy'); done();
+      }
+    }
+  </script>
+{% endif %}
+
 <div class="cards">
   <section class="card">
     <h3>Generate TTL token</h3>

@@ -72,6 +72,8 @@ class TokensView(View):
             "project": project,
             "active": "tokens",
             "tokens": TTLToken.objects.filter(user=request.user).order_by("-created"),
+            "new_token": request.session.pop("new_token", None),
+            "new_token_expires": request.session.pop("new_token_expires", None),
         })
 
 
@@ -166,12 +168,8 @@ class GenerateTokenView(View):
         if project:
             description = f"{description} for {project.name}"
         token = TTLToken.objects.create(user=request.user, description=description)
-        messages.success(
-            request,
-            f"TTL token (copy now — shown once): {token.key}  ·  "
-            f"add it as a masked TESTY_TOKEN CI/CD variable in your autotests "
-            f"repository. Expires {token.expiration_date:%Y-%m-%d}.",
-        )
+        request.session["new_token"] = token.key
+        request.session["new_token_expires"] = f"{token.expiration_date:%Y-%m-%d}"
         return _back("tokens", project_id)
 
 
