@@ -44,7 +44,9 @@ class PipelineRun(models.Model):
     connection = models.ForeignKey(
         GitlabConnection, on_delete=models.CASCADE, related_name="runs",
     )
-    plan = models.ForeignKey(TestPlan, on_delete=models.CASCADE, related_name="+")
+    plan = models.ForeignKey(
+        TestPlan, null=True, blank=True, on_delete=models.CASCADE, related_name="+",
+    )
     kind = models.CharField(max_length=16, choices=KIND_CHOICES, default=KIND_RUN)
     gitlab_pipeline_id = models.PositiveIntegerField(null=True, blank=True)
     web_url = models.URLField(blank=True)

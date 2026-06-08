@@ -100,7 +100,6 @@ class RunsView(View):
             context.update(
                 connection=GitlabConnection.objects.filter(project=project).first(),
                 plans=plans,
-                all_plans=candidates,
                 runs=PipelineRun.objects.filter(connection__project=project)[:20],
             )
         return render(request, self.template_name, context)
@@ -206,10 +205,10 @@ class RunView(View):
 class SyncView(View):
 
     def post(self, request):
-        plan = get_object_or_404(TestPlan, pk=request.POST["plan_id"])
-        connection = get_object_or_404(GitlabConnection, project=plan.project, enabled=True)
+        project = get_object_or_404(Project, pk=request.POST["project"])
+        connection = get_object_or_404(GitlabConnection, project=project, enabled=True)
         run = trigger_sync(
-            connection, plan,
+            connection,
             user=getattr(request.user, "username", ""),
             base_url=request.build_absolute_uri("/"),
         )
@@ -217,7 +216,7 @@ class SyncView(View):
             messages.error(request, f"Failed to trigger sync pipeline: {run.detail}")
         else:
             messages.success(request, f"Sync pipeline triggered: {run.web_url or run.id}")
-        return _back("runs", plan.project_id)
+        return _back("runs", project.id)
 
 
 class PlanRunStatusAPIView(APIView):
