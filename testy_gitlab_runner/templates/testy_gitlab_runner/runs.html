@@ -30,6 +30,32 @@
              tests and <strong>every</strong> test carries an <code>automation_id</code> attribute.</p>
         {% endif %}
       </section>
+
+      <section class="card">
+        <h3>Sync autotests</h3>
+        <p class="hint">Triggers the pipeline in <code>TESTY_MODE=sync</code>: the adapter collects
+           tests from the repository and writes their cases (and <code>automation_id</code>) into
+           TestY. Use it to make a plan runnable. The CI job must honor <code>TESTY_MODE</code>.</p>
+        {% if all_plans %}
+          <form method="post" action="{% url 'plugins:testy_gitlab_runner:sync' %}"
+                onsubmit="return confirm('Trigger autotests sync for the selected plan? This may create or update test cases in TestY.');">
+            {% csrf_token %}
+            <div class="field">
+              <label>Test plan</label>
+              <select name="plan_id" required>
+                {% for plan in all_plans %}
+                  <option value="{{ plan.id }}">{{ plan.name }} (#{{ plan.id }})</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="actions">
+              <button type="submit">⟳ Sync autotests</button>
+            </div>
+          </form>
+        {% else %}
+          <p class="hint">No test plans for this project yet.</p>
+        {% endif %}
+      </section>
     </div>
   {% else %}
     <p class="hint">No enabled GitLab connection for this project.
@@ -38,10 +64,11 @@
 
   <h2>Recent runs</h2>
   <table>
-    <tr><th>#</th><th>Plan</th><th>Pipeline</th><th>Status</th><th>When</th><th>By</th></tr>
+    <tr><th>#</th><th>Kind</th><th>Plan</th><th>Pipeline</th><th>Status</th><th>When</th><th>By</th></tr>
     {% for run in runs %}
       <tr>
         <td>{{ run.id }}</td>
+        <td>{{ run.get_kind_display }}</td>
         <td>{{ run.plan_id }}</td>
         <td>{% if run.web_url %}<a href="{{ run.web_url }}" target="_blank">{{ run.gitlab_pipeline_id }}</a>{% else %}—{% endif %}</td>
         <td><span class="badge {{ run.status }}">{{ run.status }}</span></td>
@@ -49,7 +76,7 @@
         <td>{{ run.triggered_by }}</td>
       </tr>
     {% empty %}
-      <tr><td colspan="6">No runs yet.</td></tr>
+      <tr><td colspan="7">No runs yet.</td></tr>
     {% endfor %}
   </table>
 {% else %}
