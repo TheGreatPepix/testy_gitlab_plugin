@@ -25,6 +25,7 @@ from testy_gitlab_runner.services.runner import trigger_run
 from testy_gitlab_runner.services.targets import (
     ResolvedTargets,
     TargetResolutionError,
+    filter_plan_test_ids,
     plan_automation_readiness,
     resolve_targets,
 )
@@ -232,10 +233,17 @@ class RunTestsAPIView(APIView):
         connection = get_object_or_404(
             GitlabConnection, project=plan.project, enabled=True,
         )
+        test_ids = serializer.validated_data["tests"]
+        if serializer.validated_data["all_selected"]:
+            test_ids = filter_plan_test_ids(
+                plan=plan,
+                filter_conditions=serializer.validated_data["filter_conditions"],
+                excluded_test_ids=serializer.validated_data["excluded_tests"],
+            )
         try:
             resolved = resolve_targets(
                 plan=plan,
-                test_ids=serializer.validated_data["tests"],
+                test_ids=test_ids,
                 plan_ids=serializer.validated_data["plans"],
             )
         except TargetResolutionError as exc:

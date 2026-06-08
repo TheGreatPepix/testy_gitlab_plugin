@@ -4,7 +4,9 @@ from dataclasses import dataclass, field
 
 from django.db.models import Q
 
+from testy.tests_representation.filters.tests import TestWithoutProjectFilter
 from testy.tests_representation.models import Test, TestPlan
+from testy.utilities.request import mock_request_with_query_params
 
 AUTOMATION_ID = "automation_id"
 
@@ -61,6 +63,26 @@ def resolve_targets(
     if not resolved.targets:
         raise TargetResolutionError("Selected items resolved to an empty target list.")
     return resolved
+
+
+def filter_plan_test_ids(
+    *,
+    plan: TestPlan,
+    filter_conditions: dict | None = None,
+    excluded_test_ids: list[int] | None = None,
+) -> list[int]:
+    plan_ids = plan.get_descendants(include_self=True).values_list("id", flat=True)
+    queryset = Test.objects.filter(project=plan.project, plan_id__in=plan_ids)
+    if filter_conditions:
+        mocked_request = mock_request_with_query_params(filter_conditions)
+        filterset = TestWithoutProjectFilter(
+            mocked_request.GET, queryset=queryset, request=mocked_request,
+        )
+        filterset.is_valid()
+        queryset = filterset.filter_queryset(queryset)
+    if excluded_test_ids:
+        queryset = queryset.exclude(id__in=excluded_test_ids)
+    return list(queryset.values_list("id", flat=True))
 
 
 def _selected_plan_ids(

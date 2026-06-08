@@ -13,9 +13,14 @@ class RunTestsSerializer(serializers.Serializer):
     plans = serializers.ListField(
         child=serializers.IntegerField(min_value=1), required=False, default=list,
     )
+    all_selected = serializers.BooleanField(required=False, default=False)
+    filter_conditions = serializers.JSONField(required=False, default=dict)
+    excluded_tests = serializers.ListField(
+        child=serializers.IntegerField(min_value=1), required=False, default=list,
+    )
 
     def validate(self, attrs):
-        if not attrs["tests"] and not attrs["plans"]:
+        if not attrs["tests"] and not attrs["plans"] and not attrs["all_selected"]:
             raise serializers.ValidationError(
                 "Select at least one test or plan.",
             )
