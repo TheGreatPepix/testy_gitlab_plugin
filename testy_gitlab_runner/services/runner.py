@@ -22,8 +22,9 @@ def build_pipeline_variables(
         "TESTY_MODE": mode,
         "TESTY_URL": testy_base,
         "TESTY_PROJECT_ID": str(connection.project_id),
-        "TESTY_PLAN_ID": str(plan.id),
     }
+    if plan is not None:
+        variables["TESTY_PLAN_ID"] = str(plan.id)
     if resolved.targets:
         variables["TESTY_PYTEST_TARGETS"] = json.dumps(
             resolved.targets, ensure_ascii=False,
@@ -84,9 +85,9 @@ def trigger_run(
 
 
 def trigger_sync(
-    connection: GitlabConnection, plan, *, user="", base_url="",
+    connection: GitlabConnection, *, user="", base_url="",
 ) -> PipelineRun:
     return _trigger(
-        connection, plan, resolved=ResolvedTargets(),
+        connection, None, resolved=ResolvedTargets(),
         kind=PipelineRun.KIND_SYNC, mode="sync", user=user, base_url=base_url,
     )
