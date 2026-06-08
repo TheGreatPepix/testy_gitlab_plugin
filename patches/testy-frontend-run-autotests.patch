@@ -2,7 +2,7 @@ diff --git a/frontend/src/entities/plugin/api/index.ts b/frontend/src/entities/p
 index 09c294b..d12bdc8 100644
 --- a/frontend/src/entities/plugin/api/index.ts
 +++ b/frontend/src/entities/plugin/api/index.ts
-@@ -2,6 +2,24 @@ import { createApi } from "@reduxjs/toolkit/dist/query/react"
+@@ -2,6 +2,27 @@ import { createApi } from "@reduxjs/toolkit/dist/query/react"
  
  import { rootQuery } from "app/apiSlice"
  
@@ -10,6 +10,9 @@ index 09c294b..d12bdc8 100644
 +  plan: number
 +  tests?: number[]
 +  plans?: number[]
++  all_selected?: boolean
++  filter_conditions?: Record<string, unknown>
++  excluded_tests?: number[]
 +}
 +
 +export interface GitlabRunResponse {
@@ -27,7 +30,7 @@ index 09c294b..d12bdc8 100644
  export const pluginApi = createApi({
    reducerPath: "pluginApi",
    baseQuery: rootQuery,
-@@ -11,7 +29,18 @@ export const pluginApi = createApi({
+@@ -11,7 +32,18 @@ export const pluginApi = createApi({
        query: () => "plugins/",
        providesTags: [{ type: "Plugins", id: "LIST" }],
      }),
@@ -200,19 +203,46 @@ index c916b9b..59a2543 100644
  
    const [getPlans] = useLazyGetTestPlansQuery()
    const [getAncestors] = useLazyGetTestPlanAncestorsQuery()
-@@ -162,6 +166,28 @@ export const TestsBulkAction = ({ testPlanId, resetSelectedRows }: Props) => {
+@@ -162,6 +166,55 @@ export const TestsBulkAction = ({ testPlanId, resetSelectedRows }: Props) => {
      return reqData
    }
  
++  const buildRunFilterConditions = () =>
++    deleteEmptyParams({
++      is_archive: testsFilter.is_archive,
++      last_status: testsFilter.statuses,
++      search: testsFilter.name_or_id,
++      labels: testsFilter.labels,
++      not_labels: testsFilter.not_labels,
++      labels_condition: testsFilter.labels_condition,
++      suite: testsFilter.suites,
++      plan: testsFilter.plans,
++      assignee: testsFilter.assignee.filter((user) => user !== NOT_ASSIGNED_FILTER_VALUE),
++      unassigned: testsFilter.assignee?.includes(NOT_ASSIGNED_FILTER_VALUE) ? true : undefined,
++      test_plan_started_before: testsFilter?.test_plan_started_before,
++      test_plan_started_after: testsFilter?.test_plan_started_after,
++      test_plan_created_before: testsFilter?.test_plan_created_before,
++      test_plan_created_after: testsFilter?.test_plan_created_after,
++      test_created_before: testsFilter?.test_created_before,
++      test_created_after: testsFilter?.test_created_after,
++      plan_attributes: testsFilter?.plan_attributes || undefined,
++      suite_attributes: testsFilter?.suite_attributes || undefined,
++      case_attributes: testsFilter?.case_attributes || undefined,
++      result_attributes: testsFilter?.result_attributes || undefined,
++    })
++
 +  const prepareRunTestsData = (): GitlabRunRequest => {
 +    if (!testPlanId) {
 +      throw new Error("Test plan is required.")
 +    }
 +    if (dataView === "list") {
 +      if (tableSettings.isAllSelected) {
-+        throw new Error(
-+          "Running tests after selecting all rows by filter is not supported yet."
-+        )
++        return {
++          plan: Number(testPlanId),
++          all_selected: true,
++          filter_conditions: buildRunFilterConditions(),
++          excluded_tests: tableSettings.excludedRows,
++        }
 +      }
 +      return {
 +        plan: Number(testPlanId),
@@ -229,7 +259,7 @@ index c916b9b..59a2543 100644
    const reinitTree = () => {
      if (testsTree.current) {
        testsTree.current.initRoot()
-@@ -250,7 +276,47 @@ export const TestsBulkAction = ({ testPlanId, resetSelectedRows }: Props) => {
+@@ -250,7 +303,47 @@ export const TestsBulkAction = ({ testPlanId, resetSelectedRows }: Props) => {
      reinitTree()
    }
  
@@ -277,7 +307,7 @@ index c916b9b..59a2543 100644
      {
        key: "move",
        label: (
-@@ -317,4 +383,4 @@ export const TestsBulkAction = ({ testPlanId, resetSelectedRows }: Props) => {
+@@ -317,4 +410,4 @@ export const TestsBulkAction = ({ testPlanId, resetSelectedRows }: Props) => {
        </div>
      </Flex>
    )
