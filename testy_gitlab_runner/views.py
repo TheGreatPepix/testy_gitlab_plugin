@@ -21,7 +21,7 @@ from testy_gitlab_runner.models import (
 )
 from testy_gitlab_runner.serializers import RunTestsSerializer
 from testy_gitlab_runner.services.cleanup import cleanup_project_history
-from testy_gitlab_runner.services.runner import trigger_run
+from testy_gitlab_runner.services.runner import trigger_run, trigger_sync
 from testy_gitlab_runner.services.targets import (
     ResolvedTargets,
     TargetResolutionError,
@@ -86,7 +86,7 @@ class RunsView(View):
         project = _selected_project(request)
         context = {"projects": _projects(), "project": project, "active": "runs"}
         if project:
-            candidates = (
+            candidates = list(
                 TestPlan.objects.filter(project=project, is_archive=False)
                 .order_by("-started_at")[:200]
             )
@@ -200,6 +200,23 @@ class RunView(View):
         else:
             messages.success(request, f"Pipeline triggered: {run.web_url or run.id}")
         return _back("runs", plan.project_id)
+
+
+class SyncView(View):
+
+    def post(self, request):
+        project = get_object_or_404(Project, pk=request.POST["project"])
+        connection = get_object_or_404(GitlabConnection, project=project, enabled=True)
+        run = trigger_sync(
+            connection,
+            user=getattr(request.user, "username", ""),
+            base_url=request.build_absolute_uri("/"),
+        )
+        if run.status == PipelineRun.STATUS_ERROR:
+            messages.error(request, f"Failed to trigger sync pipeline: {run.detail}")
+        else:
+            messages.success(request, f"Sync pipeline triggered: {run.web_url or run.id}")
+        return _back("runs", project.id)
 
 
 class PlanRunStatusAPIView(APIView):

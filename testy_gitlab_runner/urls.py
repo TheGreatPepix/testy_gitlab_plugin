@@ -25,6 +25,7 @@ urlpatterns = [
         name="revoke-token",
     ),
     path("run/", login_required(views.RunView.as_view()), name="run"),
+    path("sync/", login_required(views.SyncView.as_view()), name="sync"),
     path("api/run/", views.RunTestsAPIView.as_view(), name="api-run"),
     path(
         "api/plan/<int:plan_id>/run-status/",

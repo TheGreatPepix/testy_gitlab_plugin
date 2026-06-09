@@ -23,6 +23,7 @@ class ResolvedTargets:
     test_ids: list[int] = field(default_factory=list)
     case_ids: list[int] = field(default_factory=list)
     plan_ids: list[int] = field(default_factory=list)
+    target_map: dict[str, list[int]] = field(default_factory=dict)
 
 
 def resolve_targets(
@@ -37,22 +38,28 @@ def resolve_targets(
     if not test_ids and not plan_ids:
         raise TargetResolutionError("Select at least one test or plan.")
 
-    resolved = ResolvedTargets(plan_ids=plan_ids)
-    targets: list[str] = []
     missing: dict[str, list[int]] = {}
     selected_plan_ids = _selected_plan_ids(plan=plan, plan_ids=plan_ids, missing=missing)
-
-    tests = _selected_tests(plan=plan, test_ids=test_ids, plan_ids=selected_plan_ids)
-    resolved.test_ids = list(tests.values_list("id", flat=True))
-    resolved.case_ids = list(tests.values_list("case_id", flat=True))
-    found_test_ids = set(resolved.test_ids)
+    tests = list(_selected_tests(plan=plan, test_ids=test_ids, plan_ids=selected_plan_ids))
+    found_test_ids = {test.id for test in tests}
     _add_missing(missing, "tests", [tid for tid in test_ids if tid not in found_test_ids])
+
+    resolved = ResolvedTargets(
+        test_ids=[test.id for test in tests],
+        case_ids=[test.case_id for test in tests],
+        plan_ids=plan_ids,
+    )
+    targets: list[str] = []
+    target_map: dict[str, list[int]] = {}
     for test in tests:
         target = _automation_value(test.case.attributes, automation_key)
-        if target:
-            targets.append(target)
-        else:
+        if not target:
             _add_missing(missing, "tests", [test.id])
+            continue
+        targets.append(target)
+        bucket = target_map.setdefault(target, [])
+        if test.id not in bucket:
+            bucket.append(test.id)
 
     if missing:
         raise TargetResolutionError(
@@ -60,6 +67,7 @@ def resolve_targets(
             missing,
         )
     resolved.targets = _unique_strings(targets)
+    resolved.target_map = target_map
     if not resolved.targets:
         raise TargetResolutionError("Selected items resolved to an empty target list.")
     return resolved
