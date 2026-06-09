@@ -30,6 +30,23 @@
              tests and <strong>every</strong> test carries an <code>automation_id</code> attribute.</p>
         {% endif %}
       </section>
+
+      <section class="card">
+        <h3>Sync autotests</h3>
+        <p class="hint">Triggers the pipeline in <code>TESTY_MODE=sync</code>: the adapter collects
+           tests from the repository, creates their cases (with <code>automation_id</code>) and
+           mirrors them into a test plan. The destination root (<code>testy_root_name</code> /
+           suite / plan id) is configured in the autotests repo's <code>pytest.ini</code> — the
+           plugin only triggers the sync for this project.</p>
+        <form method="post" action="{% url 'plugins:testy_gitlab_runner:sync' %}"
+              onsubmit="return confirm('Trigger autotests sync for this project? This may create or update test cases and plans in TestY.');">
+          {% csrf_token %}
+          <input type="hidden" name="project" value="{{ project.id }}">
+          <div class="actions">
+            <button type="submit">⟳ Sync autotests</button>
+          </div>
+        </form>
+      </section>
     </div>
   {% else %}
     <p class="hint">No enabled GitLab connection for this project.
@@ -38,18 +55,19 @@
 
   <h2>Recent runs</h2>
   <table>
-    <tr><th>#</th><th>Plan</th><th>Pipeline</th><th>Status</th><th>When</th><th>By</th></tr>
+    <tr><th>#</th><th>Kind</th><th>Plan</th><th>Pipeline</th><th>Status</th><th>When</th><th>By</th></tr>
     {% for run in runs %}
       <tr>
         <td>{{ run.id }}</td>
-        <td>{{ run.plan_id }}</td>
+        <td>{{ run.get_kind_display }}</td>
+        <td>{{ run.plan_id|default:"—" }}</td>
         <td>{% if run.web_url %}<a href="{{ run.web_url }}" target="_blank">{{ run.gitlab_pipeline_id }}</a>{% else %}—{% endif %}</td>
         <td><span class="badge {{ run.status }}">{{ run.status }}</span></td>
         <td>{{ run.created_at }}</td>
         <td>{{ run.triggered_by }}</td>
       </tr>
     {% empty %}
-      <tr><td colspan="6">No runs yet.</td></tr>
+      <tr><td colspan="7">No runs yet.</td></tr>
     {% endfor %}
   </table>
 {% else %}
