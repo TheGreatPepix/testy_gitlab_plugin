@@ -33,6 +33,7 @@ class PipelineRun(models.Model):
 
     STATUS_TRIGGERED = "triggered"
     STATUS_ERROR = "error"
+    STATUS_FINISHED = "finished"
 
     KIND_RUN = "run"
     KIND_SYNC = "sync"
@@ -58,6 +59,14 @@ class PipelineRun(models.Model):
     targets = models.JSONField(default=list, blank=True)
     triggered_by = models.CharField(max_length=255, blank=True)
     detail = models.TextField(blank=True)
+    last_result_at = models.DateTimeField(
+        null=True, blank=True,
+        help_text="When the most recent autotest result for this run arrived (debounce anchor).",
+    )
+    notified_at = models.DateTimeField(
+        null=True, blank=True,
+        help_text="Set once the 'run finished' notification has been sent (dedupe guard).",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
