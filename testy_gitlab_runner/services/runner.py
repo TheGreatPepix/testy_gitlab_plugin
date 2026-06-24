@@ -9,7 +9,7 @@ from testy_gitlab_runner.services.gitlab_client import GitlabClient, GitlabError
 from testy_gitlab_runner.services.targets import ResolvedTargets
 
 
-NLINE_SELECTION_LIMIT = 8000
+INLINE_SELECTION_LIMIT = 8000
 
 
 def build_pipeline_variables(
