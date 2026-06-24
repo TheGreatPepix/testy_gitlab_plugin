@@ -9,12 +9,16 @@ from testy_gitlab_runner.services.gitlab_client import GitlabClient, GitlabError
 from testy_gitlab_runner.services.targets import ResolvedTargets
 
 
+NLINE_SELECTION_LIMIT = 8000
+
+
 def build_pipeline_variables(
     connection: GitlabConnection,
     plan,
     resolved: ResolvedTargets,
     base_url: str = "",
     mode: str = "run",
+    run_id: int | None = None,
 ) -> dict[str, str]:
     testy_base = (getattr(settings, "TESTY_PUBLIC_URL", "") or base_url).rstrip("/")
     variables = {
@@ -25,14 +29,20 @@ def build_pipeline_variables(
     }
     if plan is not None:
         variables["TESTY_PLAN_ID"] = str(plan.id)
-    if resolved.targets:
-        variables["TESTY_PYTEST_TARGETS"] = json.dumps(
-            resolved.targets, ensure_ascii=False,
+
+    targets_json = json.dumps(resolved.targets or [], ensure_ascii=False)
+    map_json = json.dumps(resolved.target_map or {}, ensure_ascii=False)
+    inline_size = len(targets_json) + len(map_json)
+    can_use_handle = bool(run_id and testy_base)
+    if can_use_handle and inline_size > INLINE_SELECTION_LIMIT:
+        variables["TESTY_TARGETS_URL"] = (
+            f"{testy_base}/plugins/gitlab-runner/api/runs/{run_id}/targets/"
         )
-    if resolved.target_map:
-        variables["TESTY_TEST_MAP"] = json.dumps(
-            resolved.target_map, ensure_ascii=False,
-        )
+    else:
+        if resolved.targets:
+            variables["TESTY_PYTEST_TARGETS"] = targets_json
+        if resolved.target_map:
+            variables["TESTY_TEST_MAP"] = map_json
     return variables
 
 
@@ -61,7 +71,9 @@ def _trigger(
         pipeline = client.trigger_pipeline(
             trigger_token=connection.trigger_token,
             ref=connection.ref,
-            variables=build_pipeline_variables(connection, plan, resolved, base_url, mode),
+            variables=build_pipeline_variables(
+                connection, plan, resolved, base_url, mode, run_id=run.id,
+            ),
         )
     except GitlabError as exc:
         run.status = PipelineRun.STATUS_ERROR

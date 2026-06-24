@@ -28,6 +28,7 @@ from testy_gitlab_runner.services.targets import (
     filter_plan_test_ids,
     plan_automation_readiness,
     resolve_targets,
+    run_targets,
 )
 
 
@@ -294,3 +295,13 @@ class RunTestsAPIView(APIView):
             },
             status=status.HTTP_201_CREATED,
         )
+
+
+class RunTargetsAPIView(APIView):
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, run_id):
+        run = get_object_or_404(PipelineRun, pk=run_id)
+        targets, target_map = run_targets(run)
+        return Response({"targets": targets, "target_map": target_map})

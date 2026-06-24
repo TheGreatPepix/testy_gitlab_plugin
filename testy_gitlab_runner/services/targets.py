@@ -73,6 +73,27 @@ def resolve_targets(
     return resolved
 
 
+def run_targets(run, automation_key: str = AUTOMATION_ID) -> tuple[list[str], dict[str, list[int]]]:
+    project = run.connection.project
+    tests = (
+        Test.objects.select_related("case")
+        .filter(project=project, id__in=run.test_ids or [])
+        .order_by("id")
+    )
+    targets: list[str] = []
+    target_map: dict[str, list[int]] = {}
+    for test in tests:
+        target = _automation_value(test.case.attributes, automation_key)
+        if not target:
+            continue
+        bucket = target_map.setdefault(target, [])
+        if not bucket:
+            targets.append(target)
+        if test.id not in bucket:
+            bucket.append(test.id)
+    return targets, target_map
+
+
 def filter_plan_test_ids(
     *,
     plan: TestPlan,

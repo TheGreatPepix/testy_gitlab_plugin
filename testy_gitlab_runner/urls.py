@@ -32,4 +32,9 @@ urlpatterns = [
         views.PlanRunStatusAPIView.as_view(),
         name="api-plan-run-status",
     ),
+    path(
+        "api/runs/<int:run_id>/targets/",
+        views.RunTargetsAPIView.as_view(),
+        name="api-run-targets",
+    ),
 ]
