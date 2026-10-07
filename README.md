@@ -141,6 +141,7 @@ testy_root_name = Autotests
 | Метод | Путь | Что делает |
 |---|---|---|
 | `POST` | `plugins/gitlab-runner/api/run/` | проверяет выбранные тесты и планы, запускает GitLab CI |
+| `POST` | `plugins/gitlab-runner/api/run-status/` | проверяет, можно ли запустить выбранные тесты и планы, без запуска GitLab CI |
 | `GET` | `plugins/gitlab-runner/api/plan/<id>/run-status/` | показывает, можно ли запускать план |
 
 ### Запуск из фронтенда TestY
@@ -153,6 +154,14 @@ git apply /path/to/testy_gitlab_runner/patches/testy-frontend-run-autotests.patc
 ```
 
 Патч добавляет кнопку запуска в заголовок тест-плана и пункт запуска для выбранных тестов в bulk actions. Он рассчитан на frontend TestY из `https://gitlab-pub.yadro.com/testy/testy/`.
+
+### `POST plugins/gitlab-runner/api/run-status/`
+
+Проверяет выбранные тесты и планы по тем же правилам, что и запуск, но не создает
+GitLab pipeline. Принимает то же тело запроса, что и `api/run/`, и возвращает
+`can_run: true` только тогда, когда подключение включено и у каждого выбранного
+теста заполнен `automation_id`. Frontend использует этот endpoint, чтобы не
+показывать **Run Autotests** для неготовой bulk-выборки.
 
 ### `POST plugins/gitlab-runner/api/run/`
 
