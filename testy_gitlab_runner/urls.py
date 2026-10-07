@@ -28,6 +28,11 @@ urlpatterns = [
     path("sync/", login_required(views.SyncView.as_view()), name="sync"),
     path("api/run/", views.RunTestsAPIView.as_view(), name="api-run"),
     path(
+        "api/run-status/",
+        views.SelectionRunStatusAPIView.as_view(),
+        name="api-run-status",
+    ),
+    path(
         "api/plan/<int:plan_id>/run-status/",
         views.PlanRunStatusAPIView.as_view(),
         name="api-plan-run-status",

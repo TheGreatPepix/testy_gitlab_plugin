@@ -48,6 +48,22 @@ def _back(page: str, project_id=None):
     return redirect(url)
 
 
+def _resolve_run_targets(validated_data) -> ResolvedTargets:
+    plan = validated_data["plan"]
+    test_ids = validated_data["tests"]
+    if validated_data["all_selected"]:
+        test_ids = filter_plan_test_ids(
+            plan=plan,
+            filter_conditions=validated_data["filter_conditions"],
+            excluded_test_ids=validated_data["excluded_tests"],
+        )
+    return resolve_targets(
+        plan=plan,
+        test_ids=test_ids,
+        plan_ids=validated_data["plans"],
+    )
+
+
 class ConfigView(View):
 
     template_name = "testy_gitlab_runner/config.html"
@@ -240,6 +256,29 @@ class PlanRunStatusAPIView(APIView):
         )
 
 
+class SelectionRunStatusAPIView(APIView):
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        serializer = RunTestsSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        plan = serializer.validated_data["plan"]
+        enabled = GitlabConnection.objects.filter(
+            project=plan.project, enabled=True,
+        ).exists()
+        if not enabled:
+            return Response({"enabled": False, "can_run": False, "missing": {}})
+
+        try:
+            _resolve_run_targets(serializer.validated_data)
+        except TargetResolutionError as exc:
+            return Response(
+                {"enabled": True, "can_run": False, "missing": exc.missing},
+            )
+        return Response({"enabled": True, "can_run": True, "missing": {}})
+
+
 class RunTestsAPIView(APIView):
 
     permission_classes = [IsAuthenticated]
@@ -251,19 +290,8 @@ class RunTestsAPIView(APIView):
         connection = get_object_or_404(
             GitlabConnection, project=plan.project, enabled=True,
         )
-        test_ids = serializer.validated_data["tests"]
-        if serializer.validated_data["all_selected"]:
-            test_ids = filter_plan_test_ids(
-                plan=plan,
-                filter_conditions=serializer.validated_data["filter_conditions"],
-                excluded_test_ids=serializer.validated_data["excluded_tests"],
-            )
         try:
-            resolved = resolve_targets(
-                plan=plan,
-                test_ids=test_ids,
-                plan_ids=serializer.validated_data["plans"],
-            )
+            resolved = _resolve_run_targets(serializer.validated_data)
         except TargetResolutionError as exc:
             return Response(
                 {"detail": str(exc), "missing": exc.missing},
