@@ -1,84 +1,83 @@
 {% extends "testy_gitlab_runner/base.html" %}
-{% block title %}TestY · GitLab Runner — Tokens{% endblock %}
+{% block title %}TestY · Автотесты GitLab — токены{% endblock %}
 {% block content %}
-<h1>GitLab Autotest Runner</h1>
+<h1>Автотесты GitLab</h1>
+<p class="lead">Запуск автотестов из TestY через GitLab CI/CD и чистка их истории.</p>
 {% include "testy_gitlab_runner/_subnav.html" %}
-
-<style>
-  .new-token { border-color: var(--accent); }
-  .token-copy { display: flex; gap: 8px; align-items: center; }
-  .token-copy input { flex: 1; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
-  .token-copy button { flex: none; }
-</style>
 
 {% if new_token %}
   <section class="card new-token">
-    <h3>Your new TTL token — copy it now, it is shown once</h3>
-    <p class="hint">Add it as a masked <code>TESTY_TOKEN</code> CI/CD variable in your autotests
-       repository.{% if new_token_expires %} Expires {{ new_token_expires }}.{% endif %}</p>
+    <h3>Новый токен — скопируйте его сейчас</h3>
+    <p class="hint">
+      Полное значение показывается только один раз. Добавьте его как замаскированную CI/CD-переменную
+      <code>TESTY_TOKEN</code> в репозитории автотестов.
+      {% if new_token_expires %}Срок действия: до {{ new_token_expires }}.{% endif %}
+    </p>
     <div class="token-copy">
-      <input id="new-token-value" type="text" readonly value="{{ new_token }}"
-             onfocus="this.select();">
-      <button type="button" class="accent" onclick="copyToken(this)">Copy</button>
+      <input id="new-token-value" class="mono" type="text" readonly value="{{ new_token }}" onfocus="this.select()">
+      <button id="copy-token-button" type="button" class="primary" onclick="copyToken()">Скопировать</button>
     </div>
   </section>
   <script>
-    function copyToken(btn) {
-      var input = document.getElementById('new-token-value');
+    function copyToken() {
+      var input = document.getElementById("new-token-value");
+      var button = document.getElementById("copy-token-button");
       var done = function () {
-        var prev = btn.textContent;
-        btn.textContent = 'Copied!';
-        setTimeout(function () { btn.textContent = prev; }, 1500);
+        button.textContent = "Скопировано";
+        setTimeout(function () { button.textContent = "Скопировать"; }, 1600);
       };
       if (navigator.clipboard && navigator.clipboard.writeText) {
         navigator.clipboard.writeText(input.value).then(done, function () {
-          input.select(); document.execCommand('copy'); done();
+          input.select(); document.execCommand("copy"); done();
         });
       } else {
-        input.select(); document.execCommand('copy'); done();
+        input.select(); document.execCommand("copy"); done();
       }
     }
   </script>
 {% endif %}
 
-<div class="cards">
+<div class="grid">
   <section class="card">
-    <h3>Generate TTL token</h3>
-    <p class="hint">A TTL token tied to <strong>your</strong> account. Add it as a masked
-       <code>TESTY_TOKEN</code> CI/CD variable in the autotests repository (the plugin does not
-       store it). The full key is shown once, right after generation.</p>
+    <h3>Выпустить токен</h3>
+    <p class="hint">Временный токен TestY с правами <b>вашего</b> пользователя. Добавьте его как
+       замаскированную CI/CD-переменную <code>TESTY_TOKEN</code> в репозитории автотестов — плагин
+       токен не хранит.</p>
     <form method="post" action="{% url 'plugins:testy_gitlab_runner:generate-token' %}">
       {% csrf_token %}
       {% if project %}<input type="hidden" name="project" value="{{ project.id }}">{% endif %}
-      <div class="actions">
-        <button type="submit" class="accent">Generate TTL token</button>
-      </div>
+      <button type="submit" class="primary">Выпустить токен</button>
     </form>
   </section>
 </div>
 
-<h2>Your tokens</h2>
+<h2>Ваши токены</h2>
 {% if tokens %}
-  <table>
-    <tr><th>Key</th><th>Description</th><th>Created</th><th>Expires</th><th></th></tr>
-    {% for tok in tokens %}
-      <tr>
-        <td><code>{{ tok.key|slice:":8" }}…</code></td>
-        <td>{{ tok.description|default:"—" }}</td>
-        <td>{{ tok.created|date:"Y-m-d" }}</td>
-        <td>{{ tok.expiration_date|date:"Y-m-d" }}</td>
-        <td>
-          <form class="inline" method="post"
-                action="{% url 'plugins:testy_gitlab_runner:revoke-token' tok.key %}">
-            {% csrf_token %}
-            {% if project %}<input type="hidden" name="project" value="{{ project.id }}">{% endif %}
-            <button type="submit">Revoke</button>
-          </form>
-        </td>
-      </tr>
-    {% endfor %}
-  </table>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Токен</th><th>Описание</th><th>Создан</th><th>Истекает</th><th></th></tr></thead>
+      <tbody>
+      {% for tok in tokens %}
+        <tr>
+          <td><code>{{ tok.key|slice:":8" }}…</code></td>
+          <td>{{ tok.description|default:"—" }}</td>
+          <td>{{ tok.created|date:"Y-m-d H:i" }}</td>
+          <td>{{ tok.expiration_date|date:"Y-m-d H:i" }}</td>
+          <td>
+            <form class="inline" method="post"
+                  action="{% url 'plugins:testy_gitlab_runner:revoke-token' tok.key %}"
+                  onsubmit="return confirm('Отозвать этот токен? Пайплайны с ним перестанут отправлять результаты.');">
+              {% csrf_token %}
+              {% if project %}<input type="hidden" name="project" value="{{ project.id }}">{% endif %}
+              <button type="submit" class="danger">Отозвать</button>
+            </form>
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
 {% else %}
-  <p class="hint">No tokens yet.</p>
+  <p class="hint">Токенов пока нет.</p>
 {% endif %}
 {% endblock %}

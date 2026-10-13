@@ -1,76 +1,82 @@
 {% extends "testy_gitlab_runner/base.html" %}
-{% block title %}TestY · GitLab Runner — Runs{% endblock %}
+{% block title %}TestY · Автотесты GitLab — прогоны{% endblock %}
 {% block content %}
-<h1>GitLab Autotest Runner</h1>
+<h1>Автотесты GitLab</h1>
+<p class="lead">Запуск автотестов из TestY через GitLab CI/CD и чистка их истории.</p>
 {% include "testy_gitlab_runner/_subnav.html" %}
 
 {% if project %}
   {% if connection and connection.enabled %}
-    <div class="cards">
+    <div class="grid">
       <section class="card">
-        <h3>Run a test plan</h3>
+        <h3>Запустить тест-план</h3>
         {% if plans %}
-          <p class="hint">Only plans whose every test has an <code>automation_id</code> are listed.</p>
+          <p class="hint">В списке только планы, у всех тестов которых есть <code>automation_id</code>.</p>
           <form method="post" action="{% url 'plugins:testy_gitlab_runner:run' %}">
             {% csrf_token %}
             <div class="field">
-              <label>Test plan</label>
-              <select name="plan_id" required>
+              <label for="plan-id">Тест-план</label>
+              <select id="plan-id" name="plan_id" required>
                 {% for plan in plans %}
                   <option value="{{ plan.id }}">{{ plan.name }} (#{{ plan.id }})</option>
                 {% endfor %}
               </select>
             </div>
             <div class="actions">
-              <button type="submit" class="accent">▶ Run autotests</button>
+              <button type="submit" class="primary">▶ Запустить автотесты</button>
             </div>
           </form>
         {% else %}
-          <p class="hint">No runnable plans for this project — a plan is listed only when it has
-             tests and <strong>every</strong> test carries an <code>automation_id</code> attribute.</p>
+          <p class="hint">Нет планов для запуска. План появляется в списке, когда в нём есть тесты
+             и у <b>каждого</b> теста есть атрибут <code>automation_id</code>.</p>
         {% endif %}
       </section>
 
       <section class="card">
-        <h3>Sync autotests</h3>
-        <p class="hint">Triggers the pipeline in <code>TESTY_MODE=sync</code>: the adapter collects
-           tests from the repository, creates their cases (with <code>automation_id</code>) and
-           mirrors them into a test plan. The destination root (<code>testy_root_name</code> /
-           suite / plan id) is configured in the autotests repo's <code>pytest.ini</code> — the
-           plugin only triggers the sync for this project.</p>
+        <h3>Синхронизировать автотесты</h3>
+        <p class="hint">Запускает пайплайн с <code>TESTY_MODE=sync</code>: адаптер собирает тесты из
+           репозитория, создаёт для них кейсы с <code>automation_id</code> и раскладывает их по
+           тест-планам. Куда именно (<code>testy_root_name</code>, id набора или плана), задаётся
+           в <code>pytest.ini</code> репозитория автотестов — плагин только запускает синхронизацию.</p>
         <form method="post" action="{% url 'plugins:testy_gitlab_runner:sync' %}"
-              onsubmit="return confirm('Trigger autotests sync for this project? This may create or update test cases and plans in TestY.');">
+              onsubmit="return confirm('Запустить синхронизацию автотестов? В TestY могут появиться или измениться кейсы и тест-планы.');">
           {% csrf_token %}
           <input type="hidden" name="project" value="{{ project.id }}">
           <div class="actions">
-            <button type="submit">⟳ Sync autotests</button>
+            <button type="submit">⟳ Синхронизировать</button>
           </div>
         </form>
       </section>
     </div>
   {% else %}
-    <p class="hint">No enabled GitLab connection for this project.
-       Set it up in <a href="{% url 'plugins:testy_gitlab_runner:index' %}?project={{ project.id }}">Config</a>.</p>
+    <p class="hint" style="margin-top:22px">Для проекта нет включённого подключения к GitLab.
+       Настройте его на вкладке <a href="{% url 'plugins:testy_gitlab_runner:index' %}?project={{ project.id }}">Настройки</a>.</p>
   {% endif %}
 
-  <h2>Recent runs</h2>
-  <table>
-    <tr><th>#</th><th>Kind</th><th>Plan</th><th>Pipeline</th><th>Status</th><th>When</th><th>By</th></tr>
-    {% for run in runs %}
-      <tr>
-        <td>{{ run.id }}</td>
-        <td>{{ run.get_kind_display }}</td>
-        <td>{{ run.plan_id|default:"—" }}</td>
-        <td>{% if run.web_url %}<a href="{{ run.web_url }}" target="_blank">{{ run.gitlab_pipeline_id }}</a>{% else %}—{% endif %}</td>
-        <td><span class="badge {{ run.status }}">{{ run.status }}</span></td>
-        <td>{{ run.created_at }}</td>
-        <td>{{ run.triggered_by }}</td>
-      </tr>
-    {% empty %}
-      <tr><td colspan="7">No runs yet.</td></tr>
-    {% endfor %}
-  </table>
+  <h2>Последние прогоны</h2>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>#</th><th>Тип</th><th>План</th><th>Пайплайн</th><th>Статус</th><th>Когда</th><th>Кто</th></tr>
+      </thead>
+      <tbody>
+      {% for run in runs %}
+        <tr>
+          <td>{{ run.id }}</td>
+          <td>{% if run.kind == "sync" %}Синхронизация{% else %}Прогон{% endif %}</td>
+          <td>{{ run.plan_id|default:"—" }}</td>
+          <td>{% if run.web_url %}<a href="{{ run.web_url }}" target="_blank" rel="noopener">{{ run.gitlab_pipeline_id }}</a>{% else %}—{% endif %}</td>
+          <td><span class="badge {{ run.status }}">{% if run.status == "triggered" %}запущен{% elif run.status == "running" %}выполняется{% elif run.status == "finished" or run.status == "success" %}завершён{% elif run.status == "failed" %}упал{% elif run.status == "error" %}ошибка{% elif run.status == "canceled" %}отменён{% else %}{{ run.status }}{% endif %}</span></td>
+          <td>{{ run.created_at|date:"Y-m-d H:i" }}</td>
+          <td>{{ run.triggered_by }}</td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="7" class="empty">Прогонов пока нет.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
 {% else %}
-  <p class="hint">Select a project to run test plans and see recent runs.</p>
+  <p class="hint" style="margin-top:22px">Выберите проект, чтобы запускать тест-планы и смотреть последние прогоны.</p>
 {% endif %}
 {% endblock %}

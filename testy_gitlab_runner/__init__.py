@@ -1,4 +1,4 @@
-__version__ = "1.0.6"
+__version__ = "1.0.7"
 default_app_config = "testy_gitlab_runner.apps.TestyGitlabRunnerConfig"
 
 try:

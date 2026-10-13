@@ -1,91 +1,100 @@
 {% extends "testy_gitlab_runner/base.html" %}
-{% block title %}TestY · GitLab Runner — Config{% endblock %}
+{% block title %}TestY · Автотесты GitLab — настройки{% endblock %}
 {% block content %}
-<h1>GitLab Autotest Runner</h1>
+<h1>Автотесты GitLab</h1>
+<p class="lead">Запуск автотестов из TestY через GitLab CI/CD и чистка их истории.</p>
 {% include "testy_gitlab_runner/_subnav.html" %}
 
 {% if project %}
-<div class="cards">
+<div class="grid">
   <section class="card">
-    <h3>GitLab connection</h3>
+    <h3>Подключение к GitLab</h3>
+    <p class="hint">Репозиторий с автотестами, пайплайн которого TestY будет запускать.</p>
     <form method="post" action="{% url 'plugins:testy_gitlab_runner:config' project.id %}">
       {% csrf_token %}
       <div class="field">
-        <label>GitLab URL</label>
-        <input type="url" name="gitlab_url"
+        <label for="gitlab-url">Адрес GitLab</label>
+        <input id="gitlab-url" type="url" name="gitlab_url"
                value="{{ connection.gitlab_url|default:'https://gitlab.com' }}" required>
       </div>
-      <div class="field">
-        <label>GitLab project id</label>
-        <input type="number" name="gitlab_project_id"
-               value="{{ connection.gitlab_project_id|default:'' }}" required>
+      <div class="field-row">
+        <div class="field">
+          <label for="gitlab-project">ID проекта в GitLab</label>
+          <input id="gitlab-project" type="number" name="gitlab_project_id"
+                 value="{{ connection.gitlab_project_id|default:'' }}" required>
+        </div>
+        <div class="field">
+          <label for="gitlab-ref">Ветка или тег</label>
+          <input id="gitlab-ref" type="text" name="ref" value="{{ connection.ref|default:'main' }}">
+        </div>
       </div>
       <div class="field">
-        <label>Ref (branch / tag)</label>
-        <input type="text" name="ref" value="{{ connection.ref|default:'main' }}">
+        <label for="trigger-token">Trigger-токен</label>
+        <input id="trigger-token" type="password" name="trigger_token"
+               {% if connection %}placeholder="Оставьте пустым, чтобы не менять"{% else %}required{% endif %}>
+        <span class="hint">GitLab → Settings → CI/CD → Pipeline trigger tokens.</span>
       </div>
-      <div class="field">
-        <label>Trigger token {% if connection %}(leave blank to keep current){% endif %}</label>
-        <input type="password" name="trigger_token" {% if not connection %}required{% endif %}>
-        <span class="hint">GitLab → Settings → CI/CD → Pipeline triggers.</span>
-      </div>
-      <div class="field-check">
-        <label><input type="checkbox" name="enabled"
-               {% if not connection or connection.enabled %}checked{% endif %}> Enabled</label>
-      </div>
+      <label class="check"><input type="checkbox" name="enabled"
+             {% if not connection or connection.enabled %}checked{% endif %}> Подключение включено</label>
       <div class="actions">
-        <button type="submit" class="accent">Save connection</button>
+        <button type="submit" class="primary">Сохранить подключение</button>
       </div>
     </form>
   </section>
 
   <section class="card">
-    <h3>History cleanup</h3>
-    <p class="hint">Hard-delete old <strong>autotest</strong> history (matched by
-       <code>automation_id</code>) — manual tests are never touched. <code>0</code> disables a
-       window. Runs daily when enabled.</p>
+    <h3>Чистка истории</h3>
+    <p class="hint">Безвозвратно удаляет старую историю <b>автотестов</b> — кейсов с атрибутом
+       <code>automation_id</code>. Ручные кейсы не затрагиваются. <code>0</code> отключает правило.</p>
     <form method="post" action="{% url 'plugins:testy_gitlab_runner:retention-config' project.id %}">
       {% csrf_token %}
-      <div class="field-check">
-        <label><input type="checkbox" name="enabled"
-               {% if retention.enabled %}checked{% endif %}> Enabled (daily)</label>
+      <label class="check"><input type="checkbox" name="enabled"
+             {% if retention.enabled %}checked{% endif %}> Чистить ежедневно</label>
+      <div class="field-row">
+        <div class="field">
+          <label for="results-days">Результаты старше, дней</label>
+          <input id="results-days" type="number" name="results_days" min="0"
+                 value="{% if retention %}{{ retention.results_days }}{% else %}90{% endif %}">
+        </div>
+        <div class="field">
+          <label for="versions-days">Версии кейсов старше, дней</label>
+          <input id="versions-days" type="number" name="versions_days" min="0"
+                 value="{% if retention %}{{ retention.versions_days }}{% else %}90{% endif %}">
+        </div>
       </div>
       <div class="field">
-        <label>Delete results older than (days)</label>
-        <input type="number" name="results_days" min="0"
-               value="{% if retention %}{{ retention.results_days }}{% else %}90{% endif %}">
-      </div>
-      <div class="field">
-        <label>Delete version snapshots older than (days)</label>
-        <input type="number" name="versions_days" min="0"
-               value="{% if retention %}{{ retention.versions_days }}{% else %}90{% endif %}">
+        <label for="run-hour">Час запуска, UTC (0–23)</label>
+        <input id="run-hour" type="number" name="run_hour" min="0" max="23"
+               value="{% if retention %}{{ retention.run_hour }}{% else %}2{% endif %}">
+        <span class="hint">Чистка стартует в :30 этого часа. Например, 2 — это 05:30 по Москве.</span>
       </div>
       <div class="actions">
-        <button type="submit" class="accent">Save policy</button>
+        <button type="submit" class="primary">Сохранить правило</button>
       </div>
     </form>
     {% if retention %}
+      <hr class="divider">
       <div class="actions">
         <form class="inline" method="post"
               action="{% url 'plugins:testy_gitlab_runner:run-cleanup' project.id %}">
           {% csrf_token %}
           <input type="hidden" name="dry_run" value="1">
-          <button type="submit">Preview</button>
+          <button type="submit">Посмотреть, что удалится</button>
         </form>
         <form class="inline" method="post"
               action="{% url 'plugins:testy_gitlab_runner:run-cleanup' project.id %}"
-              onsubmit="return confirm('Hard-delete old autotest history for this project? This cannot be undone.')">
+              onsubmit="return confirm('Безвозвратно удалить старую историю автотестов этого проекта?')">
           {% csrf_token %}
-          <button type="submit">Run cleanup now</button>
+          <button type="submit" class="danger">Почистить сейчас</button>
         </form>
       </div>
       {% if retention.last_run_at %}
-        <p><small>Last run: {{ retention.last_run_at }} — {{ retention.last_run_detail }}</small></p>
+        <p class="hint last-run">Последняя чистка: {{ retention.last_run_at|date:"Y-m-d H:i" }} — {{ retention.last_run_detail }}</p>
       {% endif %}
     {% endif %}
   </section>
 </div>
 {% else %}
-  <p class="hint">Select a project to configure its GitLab connection and history cleanup.</p>
+  <p class="hint">Выберите проект, чтобы настроить подключение к GitLab и чистку истории.</p>
 {% endif %}
 {% endblock %}

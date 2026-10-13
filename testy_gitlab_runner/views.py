@@ -137,7 +137,7 @@ class SaveConnectionView(View):
             connection.trigger_token = request.POST["trigger_token"].strip()
         connection.enabled = bool(request.POST.get("enabled"))
         connection.save()
-        messages.success(request, "GitLab connection saved.")
+        messages.success(request, "Подключение к GitLab сохранено.")
         return _back("index", project.id)
 
 
@@ -149,8 +149,9 @@ class RetentionConfigView(View):
         policy.enabled = bool(request.POST.get("enabled"))
         policy.results_days = int(request.POST.get("results_days") or 0)
         policy.versions_days = int(request.POST.get("versions_days") or 0)
+        policy.run_hour = min(max(int(request.POST.get("run_hour") or 0), 0), 23)
         policy.save()
-        messages.success(request, "Retention policy saved.")
+        messages.success(request, "Правило чистки сохранено.")
         return _back("index", project.id)
 
 
@@ -168,12 +169,12 @@ class RunCleanupView(View):
             dry_run=dry_run,
         )
         if dry_run:
-            messages.success(request, f"Preview (nothing deleted) — would delete: {result}.")
+            messages.success(request, f"Предпросмотр, ничего не удалено. Будет удалено: {result}.")
         else:
             policy.last_run_at = timezone.now()
             policy.last_run_detail = str(result)
             policy.save(update_fields=["last_run_at", "last_run_detail", "updated_at"])
-            messages.success(request, f"Cleanup done — deleted: {result}.")
+            messages.success(request, f"Чистка выполнена. Удалено: {result}.")
         return _back("index", project.id)
 
 
@@ -196,7 +197,7 @@ class RevokeTokenView(View):
     def post(self, request, key):
         token = get_object_or_404(TTLToken, key=key, user=request.user)
         token.delete()
-        messages.success(request, "TTL token revoked.")
+        messages.success(request, "Токен отозван.")
         return _back("tokens", request.POST.get("project"))
 
 
@@ -213,9 +214,9 @@ class RunView(View):
             base_url=request.build_absolute_uri("/"),
         )
         if run.status == PipelineRun.STATUS_ERROR:
-            messages.error(request, f"Failed to trigger pipeline: {run.detail}")
+            messages.error(request, f"Не удалось запустить пайплайн: {run.detail}")
         else:
-            messages.success(request, f"Pipeline triggered: {run.web_url or run.id}")
+            messages.success(request, f"Пайплайн запущен: {run.web_url or run.id}")
         return _back("runs", plan.project_id)
 
 
@@ -230,9 +231,9 @@ class SyncView(View):
             base_url=request.build_absolute_uri("/"),
         )
         if run.status == PipelineRun.STATUS_ERROR:
-            messages.error(request, f"Failed to trigger sync pipeline: {run.detail}")
+            messages.error(request, f"Не удалось запустить синхронизацию: {run.detail}")
         else:
-            messages.success(request, f"Sync pipeline triggered: {run.web_url or run.id}")
+            messages.success(request, f"Синхронизация запущена: {run.web_url or run.id}")
         return _back("runs", project.id)
 
 

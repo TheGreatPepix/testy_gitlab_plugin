@@ -13,6 +13,10 @@ from testy.tests_description.models import (
 )
 from testy.tests_representation.models import TestResult
 
+# Set by testy-pytest-adapter on manual cases linked to an autotest via @testy.case:
+# they carry automation_id too, but their results and versions belong to the testers.
+MANUAL_KEY = "automation_manual"
+
 
 @dataclass
 class CleanupResult:
@@ -22,8 +26,8 @@ class CleanupResult:
 
     def __str__(self) -> str:
         return (
-            f"results={self.results_deleted}, versions={self.versions_deleted}, "
-            f"steps={self.steps_deleted}"
+            f"результатов: {self.results_deleted}, версий кейсов: {self.versions_deleted}, "
+            f"версий шагов: {self.steps_deleted}"
         )
 
 
@@ -35,7 +39,7 @@ def cleanup_project_history(
     autotest_case_ids = list(
         TestCase.objects.filter(
             project=project, attributes__has_key=automation_key,
-        ).values_list("id", flat=True),
+        ).exclude(attributes__has_key=MANUAL_KEY).values_list("id", flat=True),
     )
     if not autotest_case_ids:
         return out

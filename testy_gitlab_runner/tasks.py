@@ -40,6 +40,16 @@ def finalize_run(run_id):
     notify_run_finished(run)
 
 
+def _cleanup_due(run_hour: int, last_run_at, now) -> bool:
+    """Due once a day: from ``run_hour`` (UTC) on, unless it already ran since then.
+
+    Comparing with today's slot rather than matching the hour exactly also catches up
+    a run missed while beat was down.
+    """
+    slot = now.replace(hour=run_hour, minute=0, second=0, microsecond=0)
+    return now >= slot and (last_run_at is None or last_run_at < slot)
+
+
 @shared_task
 def cleanup_history():
     from django.utils import timezone
@@ -47,7 +57,10 @@ def cleanup_history():
     from testy_gitlab_runner.models import HistoryRetentionPolicy
     from testy_gitlab_runner.services.cleanup import cleanup_project_history
 
+    now = timezone.now()
     for policy in HistoryRetentionPolicy.objects.filter(enabled=True).select_related("project"):
+        if not _cleanup_due(policy.run_hour, policy.last_run_at, now):
+            continue
         try:
             result = cleanup_project_history(
                 policy.project,
@@ -65,20 +78,18 @@ def cleanup_history():
 
 
 try:
+    from celery import current_app
     from celery.schedules import crontab
 
-    from testy.root.celery import app as _celery_app
-
-    @_celery_app.on_after_configure.connect
-    def _register_cleanup_schedule(sender, **_kwargs):
-        schedule = dict(sender.conf.beat_schedule or {})
-        schedule.setdefault(
-            "testy_gitlab_runner.cleanup_history",
-            {
-                "task": "testy_gitlab_runner.tasks.cleanup_history",
-                "schedule": crontab(hour=2, minute=30),
-            },
-        )
-        sender.conf.beat_schedule = schedule
+    # Register on the app whose autodiscover is importing this module. Neither
+    # testy.root.celery.app nor on_after_configure work: `celery -A root` loads
+    # root/celery.py as a separate module, i.e. a second app instance, and TestY's
+    # celery.py touches app.conf at import, so that signal fires before we connect.
+    # Hourly: each project picks its own hour (HistoryRetentionPolicy.run_hour).
+    current_app.add_periodic_task(
+        crontab(minute=30),
+        current_app.signature("testy_gitlab_runner.tasks.cleanup_history"),
+        name="testy_gitlab_runner.cleanup_history",
+    )
 except Exception:
     pass

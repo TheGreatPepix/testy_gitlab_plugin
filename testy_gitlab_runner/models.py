@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from django.core.validators import MaxValueValidator
 from django.db import models
 
 from testy.core.models import Project
@@ -94,6 +95,10 @@ class HistoryRetentionPolicy(models.Model):
     automation_key = models.CharField(
         max_length=255, default="automation_id",
         help_text="Case attribute that marks a case as an autotest.",
+    )
+    run_hour = models.PositiveSmallIntegerField(
+        default=2, validators=[MaxValueValidator(23)],
+        help_text="Hour of the day (UTC) to run the scheduled cleanup.",
     )
     last_run_at = models.DateTimeField(null=True, blank=True)
     last_run_detail = models.CharField(max_length=255, blank=True)
